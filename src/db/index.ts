@@ -69,6 +69,16 @@ export interface ICondition {
      * @return this
      */
     or: (column: string | CallableFunction, value?: string | number, op?: string) => this;
+    /**
+     *
+     * @param callback
+     */
+    whereExists: (callback: CallableFunction) => this;
+    /**
+     *
+     * @param callback
+     */
+    whereNotExist: (callback: CallableFunction) => this;
 }
 
 export interface IQuery extends ICondition {
@@ -227,8 +237,8 @@ class Condition implements ICondition {
             this.placeholderCounter += v.length;
             this.values = this.values.concat(v);
         } else {
-            if (!value) {
-                throw new Error(`value of the condeition is null or undefined`);
+            if (value == null) {
+                throw new Error(`value of the condition is null or undefined`);
             }
             this.wheres.push(`${column} ${op} $${this.placeholderCounter}`);
             this.placeholderCounter++;
@@ -295,7 +305,7 @@ class Condition implements ICondition {
             this.values = this.values.concat(v);
         } else {
             if (values.length == 0) {
-                throw new Error(`values of the condeition is empty`);
+                throw new Error(`values of the condition is empty`);
             }
             const placeholder: string[] = [];
             for (let i = 0; i < values.length; i++) {
@@ -358,6 +368,26 @@ class Condition implements ICondition {
             }`.trim(),
             this.values,
         ];
+    }
+
+    whereNotExist(callback: CallableFunction): this {
+        const x = this.newObject();
+        callback(x);
+        const [q, v] = x.toSql();
+        this.wheres.push(`not exists(${q})`);
+        this.placeholderCounter += v.length;
+        this.values = this.values.concat(v);
+        return this;
+    }
+
+    whereExists(callback: CallableFunction): this {
+        const x = this.newObject();
+        callback(x);
+        const [q, v] = x.toSql();
+        this.wheres.push(`exists(${q})`);
+        this.placeholderCounter += v.length;
+        this.values = this.values.concat(v);
+        return this;
     }
 }
 
