@@ -1,13 +1,8 @@
-import express, { Application } from "express";
+import express, { Application, Request, Response } from "express";
 
-import Cors from "cors";
-import routes from "./routes";
 import { env } from "./helpers";
+import DB, { IQuery } from "./db";
 
-const corsOption = {
-    // origin: ["http://localhost:5173", "http://storefrontfront.s3-website-us-east-1.amazonaws.com"],
-    origin: ["*"],
-};
 const App: Application = express();
 const port = env("PORT", "3000");
 
@@ -17,8 +12,29 @@ App.listen(port, (): void => {
 
 App.use(express.json());
 
-App.use(Cors(corsOption));
+App.get("/", function ($request: Request, response: Response) {
+    const query: IQuery = DB.table("categories")
+        .where(function (query: IQuery) {
+            query.where("name", "%mahmoud%", "like");
+            query.or("type", 3);
+        })
+        .selectSub(function (q: IQuery) {
+            q.select(["count(*)"])
+                .from("aliases")
+                .whereColumn("aliases.category_id", "categories.id");
+        }, "aliases_count")
+        .or("id", 30)
+        .join("categories as parent", function(q) {
 
-App.use("/", routes);
+        })
+        .leftJoin("categories as parent", "parent.id", "categories.parent.id")
+        .rightJoin("categories as parent", "parent.id", "categories.parent.id");
+
+    const [SQL, BINDING] = query.toSql();
+    response.json({
+        SQL,
+        BINDING,
+    });
+});
 
 export default App;
