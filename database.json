@@ -1,0 +1,19 @@
+{
+    "defaultEnv": { "ENV": "ENV" },
+    "dev": {
+        "driver": { "ENV": "DEV_DATABASE_DRIVER" },
+        "host": { "ENV": "DEV_DATABASE_HOST" },
+        "database": { "ENV": "DEV_DATABASE_NAME" },
+        "user": { "ENV": "DEV_DATABASE_USER" },
+        "port": { "ENV": "DEV_DATABASE_PORT" },
+        "password": { "ENV": "DEV_DATABASE_PASSWORD" }
+    },
+    "test": {
+        "driver": { "ENV": "TEST_DATABASE_DRIVER" },
+        "host": { "ENV": "TEST_DATABASE_HOST" },
+        "database": { "ENV": "TEST_DATABASE_NAME" },
+        "user": { "ENV": "TEST_DATABASE_USER" },
+        "port": { "ENV": "TEST_DATABASE_PORT" },
+        "password": { "ENV": "TEST_DATABASE_PASSWORD" }
+    }
+}

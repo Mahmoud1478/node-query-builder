@@ -1,0 +1,81 @@
+{
+  "name": "admin-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "engines": {
+    "node": "18.12.1",
+    "npm" : "8.19.2"
+},
+  "scripts": {
+    "jasmine": "jasmine",
+    "build": "npx tsc",
+    "test": "db-migrate --env test reset && db-migrate --env test up && npm run build && ENV='test' npm run jasmine",
+    "lint": "eslint src/*.ts src/**/*.ts",
+    "format": "prettier --config .prettierrc src/*.ts src/**/*.ts --write",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts",
+    "db:migrate": "db-migrate up",
+    "db:create": "db-migrate db:create",
+    "db:drop": "db-migrate db:drop",
+    "db:fresh": "db-migrate reset && db-migrate up",
+    "init": "npm install && npm run db:migrate &&npm run dev",
+    "clear" : "rm -rf ./dist|| true",
+    "predeploy" : "chmod +x ./bin/predeploy.sh && ./bin/predeploy.sh",
+    "deploy" : "cd ./dist && eb deploy"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "db-migrate": "^0.11.13",
+    "db-migrate-pg": "^1.2.2",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^8.5.1",
+    "pg": "^8.8.0",
+    "validatorjs": "^3.22.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.14",
+    "@types/jasmine": "^4.3.0",
+    "@types/jsonwebtoken": "^8.5.9",
+    "@types/node": "^18.11.9",
+    "@types/pg": "^8.6.5",
+    "@types/supertest": "^2.0.12",
+    "@types/validatorjs": "^3.15.0",
+    "@typescript-eslint/eslint-plugin": "^5.42.1",
+    "@typescript-eslint/parser": "^5.42.1",
+    "eslint": "^8.27.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jasmine": "^4.5.0",
+    "jasmine-spec-reporter": "^7.0.0",
+    "nodemon": "^2.0.20",
+    "prettier": "^2.7.1",
+    "supertest": "^6.3.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.4"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mahmoud1478/admin-API.git"
+  },
+  "keywords": [
+    "node",
+    "admin",
+    "API",
+    "adminpanel",
+    "dashboard",
+    "JavaScript",
+    "typescript"
+
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mahmoud1478/admin-API/issues"
+  },
+  "homepage": "https://github.com/Mahmoud1478/admin-API#readme"
+}
