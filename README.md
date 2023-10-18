@@ -1,1 +1,3 @@
-# admin-API
+# Query bulder like laravel 
+===============
+### inspired by laravel
