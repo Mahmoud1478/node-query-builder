@@ -10,7 +10,7 @@
   "scripts": {
     "jasmine": "jasmine",
     "build": "npx tsc",
-    "test": "db-migrate --env test reset && db-migrate --env test up && npm run build && ENV='test' npm run jasmine",
+    "test": "npm run build && ENV='test' npm run jasmine",
     "lint": "eslint src/*.ts src/**/*.ts",
     "format": "prettier --config .prettierrc src/*.ts src/**/*.ts --write",
     "start": "node dist/server.js",
@@ -20,9 +20,7 @@
     "db:drop": "db-migrate db:drop",
     "db:fresh": "db-migrate reset && db-migrate up",
     "init": "npm install && npm run db:migrate &&npm run dev",
-    "clear" : "rm -rf ./dist|| true",
-    "predeploy" : "chmod +x ./bin/predeploy.sh && ./bin/predeploy.sh",
-    "deploy" : "cd ./dist && eb deploy"
+    "clear" : "rm -rf ./dist|| true"
   },
   "dependencies": {
     "db-migrate": "^0.11.13",

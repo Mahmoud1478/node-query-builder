@@ -7,7 +7,7 @@ const sqlStatements = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     delete: (table: string, _column: string, _prams: Record<string, any>) => `delete from ${table}`,
     insert: (table: string, columns: string, prams: Record<string, any>) =>
-        `insert into ${table} (${columns}) values ${prams.values}`,
+        `insert into ${table} (${columns}) values ${prams.values.join(" ")}`,
 };
 
 export interface IJoin extends ICondition {
@@ -106,7 +106,7 @@ export interface IQuery extends ICondition {
      * @param columns
      * @return this
      */
-    insert: (columns: string[]) => this;
+    insert: (columns: { parent_id: number; name: string }) => this;
     /**
      *
      * @param value
@@ -209,8 +209,8 @@ class Condition implements ICondition {
 
     /**
      * add where statement to filter records
-     * @param column string|callback
-     * @param value string|number -> required if column isn't callback
+     * @param column :(string|callback)
+     * @param value :(string|number) -> required if column isn't callback
      * @param op
      * @returns this
      */
@@ -239,8 +239,8 @@ class Condition implements ICondition {
 
     /**
      * add where statement to filter records
-     * @param first colmun :string
-     * @param second column :string
+     * @param first  :string
+     * @param second :string
      * @param op
      * @returns this
      */
@@ -251,7 +251,7 @@ class Condition implements ICondition {
 
     /**
      * add where in statement to filter records
-     * @param column string|callback
+     * @param column :(string|callback)
      * @param values
      * @returns this
      */
@@ -260,7 +260,7 @@ class Condition implements ICondition {
             const x = this.newObject();
             values(x);
             const [q, v] = x.toSql();
-            this.wheres.push(`${column} in (${q})`);
+            this.wheres.push(`${column} in(${q})`);
             this.placeholderCounter += v.length;
             this.values = this.values.concat(v);
         } else {
@@ -272,7 +272,7 @@ class Condition implements ICondition {
                 placeholder.push(`$${this.placeholderCounter}`);
                 this.placeholderCounter++;
             }
-            this.wheres.push(`${column} in (${placeholder.toString()})`);
+            this.wheres.push(`${column} in(${placeholder.toString()})`);
             this.placeholderCounter++;
             this.values = this.values.concat(values);
         }
@@ -281,8 +281,8 @@ class Condition implements ICondition {
 
     /**
      * add where in statement to filter records
-     * @param column string|callback
-     * @param values
+     * @param column :(string|callback)
+     * @param values :(string | number)[]
      * @returns this
      */
     whereNotIn(column: string, values: (string | number)[] | CallableFunction) {
@@ -290,7 +290,7 @@ class Condition implements ICondition {
             const x = this.newObject();
             values(x);
             const [q, v] = x.toSql();
-            this.wheres.push(`${column} not in (${q})`);
+            this.wheres.push(`${column} not in(${q})`);
             this.placeholderCounter += v.length;
             this.values = this.values.concat(v);
         } else {
@@ -302,7 +302,7 @@ class Condition implements ICondition {
                 placeholder.push(`$${this.placeholderCounter}`);
                 this.placeholderCounter++;
             }
-            this.wheres.push(`${column} not in (${placeholder.toString()})`);
+            this.wheres.push(`${column} not in(${placeholder.toString()})`);
             this.placeholderCounter++;
             this.values = this.values.concat(values);
         }
@@ -369,9 +369,9 @@ class Join extends Condition {
 
     /**
      * join query builder
-     * @param table string
-     * @param type string
-     * @param counter number
+     * @param table :string
+     * @param type :string
+     * @param counter :number
      */
     constructor(table: string, type: string, counter: number) {
         super(counter, "");
@@ -383,9 +383,9 @@ class Join extends Condition {
 
     /**
      * add and condition to statement to join query
-     * @param first column string
-     * @param second column string
-     * @param op
+     * @param first :string
+     * @param second :string
+     * @param op :string
      * @returns this
      */
     on(first: string, second: string, op = "=") {
@@ -454,7 +454,11 @@ class Query extends Condition implements IQuery {
      *
      * @protected
      */
-    protected prams = {};
+    protected prams: {
+        values: (string | number)[];
+    } = {
+        values: [],
+    };
 
     /**
      *
@@ -542,17 +546,30 @@ class Query extends Condition implements IQuery {
 
     /**
      * add insert statement to query with provided columns
-     * @param columns string[]
+     * @param columns Record<string | number>
      * @returns this
      */
-    insert(columns: string[]) {
+    insert(columns: Record<string, string | number>): this {
+        const keys: string[] = Object.keys(columns);
+        this.columns = keys;
+        const place: string[] = [];
+        for (
+            let i: number = this.placeholderCounter;
+            i < this.placeholderCounter + keys.length;
+            i++
+        ) {
+            place.push(`$${i}`);
+        }
+        this.prams.values = this.prams.values.concat(`(${place.toString()})`);
+        this.placeholderCounter += keys.length;
+        this.values = this.values.concat(Object.values(columns));
         this.statement = "insert";
         return this;
     }
 
     /**
      * add limit statement
-     * @param value nubber
+     * @param value number
      * @returns this
      */
     limit(value: number) {
@@ -674,6 +691,15 @@ class Query extends Condition implements IQuery {
             }${this.return ? ` returning ${this.return}` : ""}`.trimEnd(),
             this.values,
         ];
+    }
+
+    toRawSql(): string {
+        const [q, v] = this.toSql();
+        let y: string = q;
+        v.forEach((item, idx) => {
+            y = y.replace(`$${idx + 1}`, item as string);
+        });
+        return y;
     }
 }
 

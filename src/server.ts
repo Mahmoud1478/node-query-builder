@@ -12,23 +12,13 @@ App.listen(port, (): void => {
 
 App.use(express.json());
 
-App.get("/", function ($request: Request, response: Response) {
+App.get("/select", function ($request: Request, response: Response) {
     const query: IQuery = DB.table("categories")
         .where(function (query: IQuery) {
             query.where("name", "%mahmoud%", "like");
             query.or("type", 3);
         })
-        .selectSub(function (q: IQuery) {
-            q.select(["count(*)"])
-                .from("aliases")
-                .whereColumn("aliases.category_id", "categories.id");
-        }, "aliases_count")
-        .or("id", 30)
-        .join("categories as parent", function(q) {
-
-        })
-        .leftJoin("categories as parent", "parent.id", "categories.parent.id")
-        .rightJoin("categories as parent", "parent.id", "categories.parent.id");
+        .or("id", 30);
 
     const [SQL, BINDING] = query.toSql();
     response.json({
@@ -36,5 +26,35 @@ App.get("/", function ($request: Request, response: Response) {
         BINDING,
     });
 });
+App.get("/insert", function ($request: Request, response: Response) {
+    const query: IQuery = DB.table("categories").insert({
+        name: "mahmoud",
+        parent_id: 3,
+    });
+    const [SQL, BINDING] = query.toSql();
+    response.json({
+        SQL,
+        BINDING,
+    });
+});
 
+App.get("/update", function ($request: Request, response: Response) {
+    const query: IQuery = DB.table("categories").where("name", "mahmoud").update({
+        parent_id: 4,
+    });
+    const [SQL, BINDING] = query.toSql();
+    response.json({
+        SQL,
+        BINDING,
+    });
+});
+
+App.get("/delete", function ($request: Request, response: Response) {
+    const query: IQuery = DB.table("categories").where("name", "mahmoud").delete();
+    const [SQL, BINDING] = query.toSql();
+    response.json({
+        SQL,
+        BINDING,
+    });
+});
 export default App;
