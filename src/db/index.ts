@@ -18,16 +18,16 @@ export interface IJoin extends ICondition {
      * @param op
      * @returns this
      */
-    on: (first: string, second: string, op: string) => this;
+    on: (first: string, second: string, op?: string) => this;
 
     /**
      * add or condition to statement to join query
      * @param first column string
      * @param second column string
-     * @param op? string -> (=,>,<,<=,>=,like)
+     * @param op
      * @returns this
      */
-    orOn: (first: string, second: string, op: string) => this;
+    orOn: (first: string, second: string, op?: string) => this;
 }
 
 export interface ICondition {
@@ -83,26 +83,26 @@ export interface ICondition {
 
 export interface IQuery extends ICondition {
     /**
-     *
+     * set the table which we're dealing with
      * @param table
      * @return this
      */
     from: (table: string) => this;
     /**
-     *
+     * set select statement
      * @param columns
      * @return this
      */
     select: (columns: string[]) => this;
     /**
-     *
+     * add sub select column to columns which will returning
      * @param query
      * @param _as
      * @return this
      */
     selectSub: (query: string | CallableFunction, _as?: string) => this;
     /**
-     *
+     * set update statement
      * @param columns
      * @return this
      */
@@ -112,31 +112,31 @@ export interface IQuery extends ICondition {
      */
     delete: () => this;
     /**
-     *
+     * set inset statement
      * @param columns
      * @return this
      */
-    insert: (columns: { parent_id: number; name: string }) => this;
+    insert: (columns: Record<string, number | null | string>) => this;
     /**
-     *
+     * add limit to the query
      * @param value
      * @return this
      */
     limit: (value: number) => this;
     /**
-     *
+     * add offset to the query
      * @param value
      * @return this
      */
     offset: (value: number) => this;
     /**
-     *
+     * add returning to end of the query
      * @param colmuns
      * @return this
      */
     returning: (columns: string[]) => this;
     /**
-     *
+     * add inner join to the query
      * @param table
      * @param first
      * @param second
@@ -145,7 +145,7 @@ export interface IQuery extends ICondition {
      */
     join: (table: string, first: string | CallableFunction, second?: string, op?: string) => this;
     /**
-     *
+     * add left join to the query
      * @param table
      * @param first
      * @param second
@@ -159,7 +159,7 @@ export interface IQuery extends ICondition {
         op?: string
     ) => this;
     /**
-     *
+     * add right join to the query
      * @param table
      * @param first
      * @param second
@@ -172,18 +172,87 @@ export interface IQuery extends ICondition {
         second?: string,
         op?: string
     ) => this;
+
     /**
+     * inner join sub select query
+     * @param table : string | CallableFunction
+     * @param as : string
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @return this
+     */
+    joinSub: (
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second?: string,
+        op?: string
+    ) => this;
+    /**
+     * left join sub select query
+     * @param table : string | CallableFunction
+     * @param as : string
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @return this
+     */
+    leftJoinSub: (
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second?: string,
+        op?: string
+    ) => this;
+    /**
+     * right join sub select query
+     * @param table : string | CallableFunction
+     * @param as : string
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @return this
+     */
+    rightJoinSub: (
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second?: string,
+        op?: string
+    ) => this;
+    /**
+     * add group by to the query
+     * @param columns
+     * @return this
+     */
+    groupBy: (columns: string[]) => this;
+    /**
+     * add order by to the query
+     * @param column
+     * @param direction
+     */
+    orderBy: (column: string, direction?: string) => this;
+    /**
+     * add union to the query
+     * @param query :string | Function
+     */
+    union: (query: string | CallableFunction) => this;
+    /**
+     * get sql statement with binding values
      *@return [string , (string|number)[]
      */
-    toSql: () => [string, (string | number)[]];
+    toSql: () => [string, (string | number | null)[]];
+    /**
+     *  get raw sql combine with binding values
+     * @return string
+     */
+    toRawSql: () => string;
 }
 
 class Condition implements ICondition {
     /**
-     *
-     *  @property values :(string | number)[]
+     * store binding values
+     *  @property values :(string | number | null)[]
      */
-    protected values: (string | number)[] = [];
+    protected values: (string | number | null)[] = [];
     /**
      *
      * @protected
@@ -249,8 +318,8 @@ class Condition implements ICondition {
 
     /**
      * add where statement to filter records
-     * @param first  :string
-     * @param second :string
+     * @param first
+     * @param second
      * @param op
      * @returns this
      */
@@ -361,7 +430,7 @@ class Condition implements ICondition {
      * compile object to get query and values
      * @returns [query:string,values:(string|number)[]
      */
-    toSql(): [string, (string | number)[]] {
+    toSql(): [string, (string | number | null)[]] {
         return [
             `${this.wheres.length ? `${this.wherePrefix} ${this.wheres.join(" and ")}` : ""}${
                 this.ors.length ? ` or ${this.ors.join(" or ")}` : ""
@@ -439,7 +508,7 @@ class Join extends Condition {
      * compile object to get query and values
      * @returns [query:string,values:(string|number)[]
      */
-    toSql(): [string, (string | number)[]] {
+    toSql(): [string, (string | number | null)[]] {
         return [
             `${this.options.type} join ${this.options.table} ${
                 this.wheres.length ? `on ${this.wheres.join(" and ")}` : ""
@@ -451,12 +520,12 @@ class Join extends Condition {
 
 class Query extends Condition implements IQuery {
     /**
-     *
+     * contains columns which will operate on
      * @protected
      */
     protected columns: string[] = ["*"];
     /**
-     *
+     * contains tables and it's conditions which will join
      * @protected
      */
     protected joins: string[] = [];
@@ -466,20 +535,31 @@ class Query extends Condition implements IQuery {
      */
     protected limit_: string | null = null;
     /**
-     *
+     * how many record will skip
      * @protected
      */
     protected offset_: string | null = null;
     /**
-     *
+     * contains columns which will return when insert or update record
      * @protected
      */
     protected return: string | null = null;
     /**
-     *
+     * the statement which will perform
      * @protected
      */
     protected statement = "select";
+    /**
+     * contains columns which grouping by
+     * @protected
+     */
+    protected group_by?: string | null = null;
+
+    /**
+     * contains columns with direction which ordering with
+     * @protected
+     */
+    protected order_by: string[] = [];
     /**
      *
      * @protected
@@ -489,6 +569,8 @@ class Query extends Condition implements IQuery {
     } = {
         values: [],
     };
+
+    protected union_?: string | null;
 
     /**
      *
@@ -579,7 +661,7 @@ class Query extends Condition implements IQuery {
      * @param columns Record<string | number>
      * @returns this
      */
-    insert(columns: Record<string, string | number>): this {
+    insert(columns: Record<string, string | number | null>): this {
         const keys: string[] = Object.keys(columns);
         this.columns = keys;
         const place: string[] = [];
@@ -622,6 +704,26 @@ class Query extends Condition implements IQuery {
     }
 
     /**
+     * add group by to query
+     * @param columns :string[]
+     * @return this
+     */
+    groupBy(columns: string[]): this {
+        this.group_by = columns.toString();
+        return this;
+    }
+
+    /**
+     * add order by to query
+     * @param column :string
+     * @param direction :string
+     */
+    orderBy(column: string, direction = "asc"): this {
+        this.order_by.push(`${column} ${direction}`);
+        return this;
+    }
+
+    /**
      * add RETURNING columns
      * @param columns string[]
      * @returns this
@@ -640,17 +742,7 @@ class Query extends Condition implements IQuery {
      * @returns this
      */
     join(table: string, first: string | CallableFunction, second: string | null = null, op = "=") {
-        const jb: Join = new Join(table, "inner", this.placeholderCounter);
-        if (typeof first == "function") {
-            first(jb);
-        } else {
-            jb.on(first, second as string, op);
-        }
-        const [q, v] = jb.toSql();
-        this.placeholderCounter += v.length;
-        this.joins.push(q);
-        this.values = this.values.concat(v);
-        return this;
+        return this.baseJoin(table, "inner", first, second, op);
     }
 
     /**
@@ -667,17 +759,7 @@ class Query extends Condition implements IQuery {
         second: string | null = null,
         op = "="
     ) {
-        const jb = new Join(table, "left", this.placeholderCounter);
-        if (typeof first == "function") {
-            first(jb);
-        } else {
-            jb.on(first, second as string, op);
-        }
-        const [q, v] = jb.toSql();
-        this.placeholderCounter += v.length;
-        this.joins.push(q);
-        this.values = this.values.concat(v);
-        return this;
+        return this.baseJoin(table, "left", first, second, op);
     }
 
     /**
@@ -694,8 +776,18 @@ class Query extends Condition implements IQuery {
         second: string | null = null,
         op = "="
     ) {
-        const jb = new Join(table, "right", this.placeholderCounter);
-        if (typeof first == "function") {
+        return this.baseJoin(table, "right", first, second, op);
+    }
+
+    private baseJoin(
+        table: string,
+        type: string,
+        first: string | CallableFunction,
+        second: string | null = null,
+        op: string
+    ): this {
+        const jb = new Join(table, type, this.placeholderCounter);
+        if (typeof first === "function") {
             first(jb);
         } else {
             jb.on(first, second as string, op);
@@ -708,17 +800,96 @@ class Query extends Condition implements IQuery {
     }
 
     /**
-     * @return [string, (string | number)[]]
+     * inner join sub select query
+     * @param table : string | CallableFunction
+     * @param as
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @param op
+     * @return this
      */
-    toSql(): [string, (string | number)[]] {
+    joinSub(
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second: string | undefined,
+        op = "="
+    ): this {
+        return this.join(`(${this.handleCallable(table)}) as ${as}`, first, second, op);
+    }
+
+    /**
+     * left join sub select query
+     * @param table : string | CallableFunction
+     * @param as
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @param op
+     * @return this
+     */
+    leftJoinSub(
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second: string | undefined,
+        op = "="
+    ): this {
+        return this.leftJoin(`(${this.handleCallable(table)}) as ${as}`, first, second, op);
+    }
+
+    /**
+     * right join sub select query
+     * @param table : string | CallableFunction
+     * @param as
+     * @param first : string | CallableFunction
+     * @param second : string
+     * @param op
+     * @return this
+     */
+    rightJoinSub(
+        table: string | CallableFunction,
+        as: string,
+        first: string | CallableFunction,
+        second: string | undefined,
+        op = "="
+    ): this {
+        return this.rightJoin(`(${this.handleCallable(table)}) as ${as}`, first, second, op);
+    }
+
+    /**
+     * get the sting of table to join
+     * @private
+     * @return string
+     * @param query
+     */
+    private handleCallable(query: CallableFunction | string): string {
+        if (typeof query === "string") {
+            return query;
+        }
+        const q = this.newObject();
+        query(q);
+        const [querySing, binding] = q.toSql();
+        this.placeholderCounter += binding.length;
+        this.values = this.values.concat(binding);
+        return querySing;
+    }
+
+    /**
+     * @return [string, (string | number|null)[]]
+     */
+    toSql(): [string, (string | number | null)[]] {
         return [
             `${sqlStatements[this.statement](this.table, this.columns.toString(), this.prams)}${
                 this.joins.length ? ` ${this.joins.join(" ")}` : ""
             }${this.wheres.length ? ` where ${this.wheres.join(" and ")}` : ""}${
                 this.ors.length ? ` or ${this.ors.join(" or ")}` : ""
+            }${this.group_by ? ` group by ${this.group_by}` : ""} ${
+                this.order_by.length ? ` order by ${this.order_by.join(" ")}` : ""
             }${this.limit_ ? ` limit ${this.limit_}` : ""} ${
                 this.offset_ ? ` offset ${this.offset_}` : ""
-            }${this.return ? ` returning ${this.return}` : ""}`.trimEnd(),
+            }${this.return ? ` returning ${this.return}` : ""}${
+                this.union_ ? `union ${this.union_}` : ""
+            }`.trimEnd(),
             this.values,
         ];
     }
@@ -731,11 +902,16 @@ class Query extends Condition implements IQuery {
         });
         return y;
     }
+
+    union(query: string | CallableFunction): this {
+        this.union_ = this.handleCallable(query);
+        return this;
+    }
 }
 
 class DB {
     /**
-     *
+     * get a new query object
      * @param table
      * @return Query
      */

@@ -4,7 +4,7 @@ import { env } from "./helpers";
 import DB, { IQuery } from "./db";
 
 const App: Application = express();
-const port = env("PORT", "3000");
+const port: string = env("PORT", "3000");
 
 App.listen(port, (): void => {
     console.log(`\nApplication started in http://localhost:${port}`);
@@ -13,13 +13,16 @@ App.listen(port, (): void => {
 App.use(express.json());
 
 App.get("/", function ($request: Request, response: Response) {
-    const $query = DB.table("testing")
-        .where("id", "30", ">")
-        .whereNotExist(function (query: IQuery) {
-            query.select(["name"]).from("testing2").where("status", 0);
-        })
-        .toRawSql();
-    response.json($query);
+    response.json(
+        DB.table("teachers")
+            .select(["id", "name", "age"])
+            .groupBy(["age"])
+            .orderBy("name")
+            .where("status", 1)
+            .offset(10)
+            .limit(10)
+            .toRawSql()
+    );
 });
 
 App.get("/select", function ($request: Request, response: Response) {

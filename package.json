@@ -10,6 +10,7 @@
   "scripts": {
     "jasmine": "jasmine",
     "build": "npx tsc",
+    "pretest": "npm run clear",
     "test": "npm run build && ENV='test' npm run jasmine",
     "lint": "eslint src/*.ts src/**/*.ts",
     "format": "prettier --config .prettierrc src/*.ts src/**/*.ts --write",
@@ -27,7 +28,6 @@
     "db-migrate-pg": "^1.2.2",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "jsonwebtoken": "^8.5.1",
     "pg": "^8.8.0"
   },
   "devDependencies": {
