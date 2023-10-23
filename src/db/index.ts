@@ -79,6 +79,16 @@ export interface ICondition {
      * @param callback
      */
     whereNotExist: (callback: CallableFunction) => this;
+    /**
+     * get sql statement with binding values
+     *@return [string , (string|number)[]
+     */
+    toSql: () => [string, (string | number | null)[]];
+    /**
+     *  get raw sql combine with binding values
+     * @return string
+     */
+    toRawSql: () => string;
 }
 
 export interface IQuery extends ICondition {
@@ -235,16 +245,6 @@ export interface IQuery extends ICondition {
      * @param query :string | Function
      */
     union: (query: string | CallableFunction) => this;
-    /**
-     * get sql statement with binding values
-     *@return [string , (string|number)[]
-     */
-    toSql: () => [string, (string | number | null)[]];
-    /**
-     *  get raw sql combine with binding values
-     * @return string
-     */
-    toRawSql: () => string;
 }
 
 class Condition implements ICondition {
@@ -301,17 +301,13 @@ class Condition implements ICondition {
         if (typeof column === "function") {
             const x = new Condition(this.placeholderCounter, "");
             column(x);
-            const [q, v] = x.toSql();
-            this.wheres.push(`(${q})`);
-            this.placeholderCounter += v.length;
-            this.values = this.values.concat(v);
+            this.wheres.push(`(${this.mergeObject(x)})`);
         } else {
             if (value == null) {
                 throw new Error(`value of the condition is null or undefined`);
             }
             this.wheres.push(`${column} ${op} $${this.placeholderCounter}`);
-            this.placeholderCounter++;
-            this.values.push(value);
+            this.mergeValues(value);
         }
         return this;
     }
@@ -338,22 +334,16 @@ class Condition implements ICondition {
         if (typeof values === "function") {
             const x = this.newObject();
             values(x);
-            const [q, v] = x.toSql();
-            this.wheres.push(`${column} in(${q})`);
-            this.placeholderCounter += v.length;
-            this.values = this.values.concat(v);
+            this.wheres.push(`${column} in(${this.mergeObject(x)})`);
         } else {
             if (values.length == 0) {
                 throw new Error(`values of the condeition is empty`);
             }
             const placeholder: string[] = [];
-            for (let i = 0; i < values.length; i++) {
-                placeholder.push(`$${this.placeholderCounter}`);
-                this.placeholderCounter++;
+            for (let i = this.placeholderCounter; i <= values.length; i++) {
+                placeholder.push(`$${i}`);
             }
-            this.wheres.push(`${column} in(${placeholder.toString()})`);
-            this.placeholderCounter++;
-            this.values = this.values.concat(values);
+            this.mergeValues(values).wheres.push(`${column} in(${placeholder.toString()})`);
         }
         return this;
     }
@@ -368,22 +358,16 @@ class Condition implements ICondition {
         if (typeof values === "function") {
             const x = this.newObject();
             values(x);
-            const [q, v] = x.toSql();
-            this.wheres.push(`${column} not in(${q})`);
-            this.placeholderCounter += v.length;
-            this.values = this.values.concat(v);
+            this.wheres.push(`${column} not in(${this.mergeObject(x)})`);
         } else {
             if (values.length == 0) {
                 throw new Error(`values of the condition is empty`);
             }
             const placeholder: string[] = [];
-            for (let i = 0; i < values.length; i++) {
-                placeholder.push(`$${this.placeholderCounter}`);
-                this.placeholderCounter++;
+            for (let i = this.placeholderCounter; i <= values.length; i++) {
+                placeholder.push(`$${i}`);
             }
-            this.wheres.push(`${column} not in(${placeholder.toString()})`);
-            this.placeholderCounter++;
-            this.values = this.values.concat(values);
+            this.mergeValues(values).wheres.push(`${column} not in(${placeholder.toString()})`);
         }
         return this;
     }
@@ -399,17 +383,13 @@ class Condition implements ICondition {
         if (typeof column === "function") {
             const x = new Condition(this.placeholderCounter, "");
             column(x);
-            const [q, v] = x.toSql();
-            this.ors.push(`(${q})`);
-            this.placeholderCounter += v.length;
-            this.values = this.values.concat(v);
+            this.ors.push(`(${this.mergeObject(x)})`);
         } else {
             if (!value) {
                 throw new Error(`value of the condeition is null or undefined`);
             }
             this.ors.push(`${column} ${op} $${this.placeholderCounter}`);
-            this.placeholderCounter++;
-            this.values.push(value);
+            this.mergeValues(value);
         }
         return this;
     }
@@ -439,28 +419,50 @@ class Condition implements ICondition {
         ];
     }
 
+    toRawSql(): string {
+        const [q, v] = this.toSql();
+        let y: string = q;
+        v.forEach((item, idx) => {
+            y = y.replace(`$${idx + 1}`, item as string);
+        });
+        return y;
+    }
+
     whereNotExist(callback: CallableFunction): this {
         const x = this.newObject();
         callback(x);
-        const [q, v] = x.toSql();
-        this.wheres.push(`not exists(${q})`);
-        this.placeholderCounter += v.length;
-        this.values = this.values.concat(v);
+        this.wheres.push(`not exists(${this.mergeObject(x)})`);
         return this;
     }
 
+    /**
+     * add sub exist query to wheres
+     * @param callback
+     */
     whereExists(callback: CallableFunction): this {
         const x = this.newObject();
         callback(x);
-        const [q, v] = x.toSql();
-        this.wheres.push(`exists(${q})`);
-        this.placeholderCounter += v.length;
-        this.values = this.values.concat(v);
+        this.wheres.push(`exists(${this.mergeObject(x)})`);
+        return this;
+    }
+
+    protected mergeObject(instance: ICondition): string {
+        const [q, v] = instance.toSql();
+        this.mergeValues(v);
+        return q;
+    }
+
+    protected mergeValues(values: (string | null | number)[] | string | null | number): this {
+        if (!Array.isArray(values)) {
+            values = [values];
+        }
+        this.placeholderCounter += values.length;
+        this.values = this.values.concat(values);
         return this;
     }
 }
 
-class Join extends Condition {
+class Join extends Condition implements IJoin {
     protected options = {
         type: "",
         table: "",
@@ -621,10 +623,7 @@ class Query extends Condition implements IQuery {
         if (typeof query === "function") {
             const o = this.newObject();
             query(o);
-            const [q, v] = o.toSql();
-            this.placeholderCounter += v.length;
-            this.values = this.values.concat(v);
-            this.columns.push(`(${q})${_as ? ` as ${_as}` : ""}`);
+            this.columns.push(`(${this.mergeObject(o)})${_as ? ` as ${_as}` : ""}`);
         } else {
             this.columns.push(`(${query}) ${_as ? ` as ${_as}` : ""}`);
         }
@@ -641,9 +640,8 @@ class Query extends Condition implements IQuery {
         this.statement = "update";
         Object.keys(columns).forEach((key) => {
             this.columns.push(`${key} = $${this.placeholderCounter}`);
-            this.placeholderCounter++;
         });
-        this.values = this.values.concat(Object.values(columns));
+        this.mergeValues(Object.values(columns));
         return this;
     }
 
@@ -662,6 +660,7 @@ class Query extends Condition implements IQuery {
      * @returns this
      */
     insert(columns: Record<string, string | number | null>): this {
+        this.statement = "insert";
         const keys: string[] = Object.keys(columns);
         this.columns = keys;
         const place: string[] = [];
@@ -673,9 +672,7 @@ class Query extends Condition implements IQuery {
             place.push(`$${i}`);
         }
         this.prams.values = this.prams.values.concat(`(${place.toString()})`);
-        this.placeholderCounter += keys.length;
-        this.values = this.values.concat(Object.values(columns));
-        this.statement = "insert";
+        this.mergeValues(Object.values(columns));
         return this;
     }
 
@@ -686,8 +683,7 @@ class Query extends Condition implements IQuery {
      */
     limit(value: number) {
         this.limit_ = `$${this.placeholderCounter}`;
-        this.placeholderCounter++;
-        this.values.push(value);
+        this.mergeValues(value);
         return this;
     }
 
@@ -698,8 +694,7 @@ class Query extends Condition implements IQuery {
      */
     offset(value: number) {
         this.offset_ = `$${this.placeholderCounter}`;
-        this.placeholderCounter++;
-        this.values.push(value);
+        this.mergeValues(value);
         return this;
     }
 
@@ -792,10 +787,7 @@ class Query extends Condition implements IQuery {
         } else {
             jb.on(first, second as string, op);
         }
-        const [q, v] = jb.toSql();
-        this.placeholderCounter += v.length;
-        this.joins.push(q);
-        this.values = this.values.concat(v);
+        this.joins.push(this.mergeObject(jb));
         return this;
     }
 
@@ -868,10 +860,7 @@ class Query extends Condition implements IQuery {
         }
         const q = this.newObject();
         query(q);
-        const [querySing, binding] = q.toSql();
-        this.placeholderCounter += binding.length;
-        this.values = this.values.concat(binding);
-        return querySing;
+        return this.mergeObject(q);
     }
 
     /**
@@ -892,15 +881,6 @@ class Query extends Condition implements IQuery {
             }`.trimEnd(),
             this.values,
         ];
-    }
-
-    toRawSql(): string {
-        const [q, v] = this.toSql();
-        let y: string = q;
-        v.forEach((item, idx) => {
-            y = y.replace(`$${idx + 1}`, item as string);
-        });
-        return y;
     }
 
     union(query: string | CallableFunction): this {
