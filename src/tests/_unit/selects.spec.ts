@@ -1,4 +1,5 @@
-import DB, { IQuery } from "../../db";
+import DB from "../../index";
+import IQuery from "../../@Interfaces/IQuery";
 
 describe("select statements", (): void => {
     describe("basics", (): void => {
@@ -28,6 +29,28 @@ describe("select statements", (): void => {
                     .toRawSql()
             ).toEqual(
                 "select name,password,(select count(*) from testing2 where testing2.col1 = testing.col2) from testing"
+            );
+        });
+        it("select with sub select as function equal select with sub select as Query Object", (): void => {
+            expect(
+                DB.table("testing")
+                    .select(["name", "password"])
+                    .selectSub(function (query: IQuery) {
+                        query
+                            .select(["count(*)"])
+                            .from("testing2")
+                            .whereColumn("testing2.col1", "testing.col2");
+                    })
+                    .toRawSql()
+            ).toEqual(
+                DB.table("testing")
+                    .select(["name", "password"])
+                    .selectSub(
+                        DB.table("testing2")
+                            .select(["count(*)"])
+                            .whereColumn("testing2.col1", "testing.col2")
+                    )
+                    .toRawSql()
             );
         });
     });

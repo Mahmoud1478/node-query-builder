@@ -1,5 +1,5 @@
-import DB, { IQuery } from "../../db";
-
+import DB from "../../index";
+import IQuery from "../../@Interfaces/IQuery";
 describe("where statements", (): void => {
     describe("basics", (): void => {
         it("simple where condition ", (): void => {
@@ -75,11 +75,28 @@ describe("where statements", (): void => {
             expect(
                 DB.table("testing")
                     .whereNotExist(function (query: IQuery) {
-                        query.select(["name"]).from("testing2").where("status", 0);
+                        query
+                            .select(["*"])
+                            .from("testing2")
+                            .whereColumn("testing.a", "testing2.b")
+                            .where("status", 0);
                     })
                     .toRawSql()
             ).toEqual(
-                "select * from testing where not exists(select name from testing2 where status = 0)"
+                "select * from testing where not exists(select * from testing2 where testing.a = testing2.b and status = 0)"
+            );
+        });
+        it("where not exists condition with Query object", (): void => {
+            expect(
+                DB.table("testing")
+                    .whereNotExist(
+                        DB.table("testing2")
+                            .whereColumn("testing.a", "testing2.b")
+                            .where("status", 0)
+                    )
+                    .toRawSql()
+            ).toEqual(
+                "select * from testing where not exists(select * from testing2 where testing.a = testing2.b and status = 0)"
             );
         });
         it("where not exists with another conditions", (): void => {

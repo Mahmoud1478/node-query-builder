@@ -1,5 +1,7 @@
-import DB, { ICondition, IJoin, IQuery } from "../../db";
-
+import DB from "../../index";
+import IQuery from "../../@Interfaces/IQuery";
+import IJoin from "../../@Interfaces/IJoin";
+import ICondition from "../../@Interfaces/ICondition";
 describe("join statements", (): void => {
     describe("basics", (): void => {
         it("inner join", (): void => {

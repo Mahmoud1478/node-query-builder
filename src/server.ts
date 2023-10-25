@@ -1,7 +1,7 @@
 import express, { Application, Request, Response } from "express";
-
+import IQuery from "./@Interfaces/IQuery";
 import { env } from "./helpers";
-import DB, { IQuery } from "./db";
+import DB from "./index";
 
 const App: Application = express();
 const port: string = env("PORT", "3000");
@@ -19,8 +19,13 @@ App.get("/", function ($request: Request, response: Response) {
             .groupBy(["age"])
             .orderBy("name")
             .where("status", 1)
-            .offset(10)
-            .limit(10)
+            .union(
+                DB.table("students")
+                    .select(["id", "name", "age"])
+                    .groupBy(["age"])
+                    .orderBy("name")
+                    .where("status", 1)
+            )
             .toRawSql()
     );
 });
