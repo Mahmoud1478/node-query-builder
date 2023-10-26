@@ -2,6 +2,11 @@ import DB from "../../index";
 import IQuery from "../../@Interfaces/IQuery";
 import IJoin from "../../@Interfaces/IJoin";
 import ICondition from "../../@Interfaces/ICondition";
+import { config } from "dotenv";
+
+beforeAll(function (): void {
+    config();
+});
 describe("join statements", (): void => {
     describe("basics", (): void => {
         it("inner join", (): void => {

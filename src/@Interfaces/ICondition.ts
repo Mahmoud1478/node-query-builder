@@ -49,7 +49,7 @@ export default interface ICondition {
     whereNotExist: (callback: CallableFunction) => this;
     /**
      * get sql statement with binding values
-     *@return [string , (string|number)[]
+     * @return {[string , (string|number)[]] }
      */
     toSql: () => [string, (string | number | null)[]];
     /**

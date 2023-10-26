@@ -134,7 +134,7 @@ export default class Query extends Condition implements IQuery {
         this.columns = [];
         this.statement = "update";
         Object.keys(columns).forEach((key) => {
-            this.columns.push(`${key} = $${this.placeholderCounter}`);
+            this.columns.push(`${key} = ${this.placeholderFn(this.placeholderCounter, key)}`);
         });
         this.mergeValues(Object.values(columns));
         return this;
@@ -161,13 +161,9 @@ export default class Query extends Condition implements IQuery {
         const keys: string[] = Object.keys(columns);
         this.columns = keys;
         const place: string[] = [];
-        for (
-            let i: number = this.placeholderCounter;
-            i < this.placeholderCounter + keys.length;
-            i++
-        ) {
-            place.push(`$${i}`);
-        }
+        keys.forEach((key: string, idx: number) => {
+            place.push(this.placeholderFn(this.placeholderCounter + (idx + 1), key));
+        });
         this.prams.values = this.prams.values.concat(`(${place.toString()})`);
         this.mergeValues(Object.values(columns));
         return this;
@@ -179,7 +175,7 @@ export default class Query extends Condition implements IQuery {
      *  @returns - The instance of the object that called the method.
      */
     limit(value: number): this {
-        this.limit_ = `$${this.placeholderCounter}`;
+        this.limit_ = this.placeholderFn(this.placeholderCounter, "limit");
         this.mergeValues(value);
         return this;
     }
@@ -191,7 +187,7 @@ export default class Query extends Condition implements IQuery {
      * @return {this} - Returns the current instance of the class.
      */
     offset(value: number): this {
-        this.offset_ = `$${this.placeholderCounter}`;
+        this.offset_ = this.placeholderFn(this.placeholderCounter, "offset");
         this.mergeValues(value);
         return this;
     }

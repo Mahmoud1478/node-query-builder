@@ -1,12 +1,12 @@
 {
   "name": "node-query-builder",
   "version": "1.0.0",
-  "description": "Query builder like lavavel",
+  "description": "Query builder like laravel",
   "main": "index.js",
   "engines": {
     "node": "18.12.1",
-    "npm" : "8.19.2"
-},
+    "npm": "8.19.2"
+  },
   "scripts": {
     "jasmine": "jasmine",
     "build": "npx tsc",
@@ -21,7 +21,7 @@
     "db:drop": "db-migrate db:drop",
     "db:fresh": "db-migrate reset && db-migrate up",
     "init": "npm install && npm run db:migrate &&npm run dev",
-    "clear" : "rm -rf ./dist|| true"
+    "clear": "rm -rf ./dist|| true"
   },
   "dependencies": {
     "db-migrate": "^0.11.13",
@@ -49,22 +49,18 @@
     "supertest": "^6.3.1",
     "ts-node": "^10.9.1",
     "typescript": "^4.8.4"
-},
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mahmoud1478/node-query-builder.git"
   },
   "keywords": [
-    "node",
-    "Query",
-    "builder",
-    "lavavel",
-    "orm",
-    "JavaScript",
+    "node", "Query",
+    "builder", "lavavel",
+    "orm", "JavaScript",
     "typescript"
-
   ],
-  "author": "",
+  "author": "Mahmoud Mostafa",
   "license": "ISC",
   "bugs": {
     "url": "git@github.com:Mahmoud1478/node-query-builder.git/issues"

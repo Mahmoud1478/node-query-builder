@@ -1,11 +1,15 @@
 import ICondition from "../@Interfaces/ICondition";
 import IQuery from "../@Interfaces/IQuery";
+import { env } from "../helpers";
+import placeholders from "../@Placeholder";
 
 export default class Condition implements ICondition {
     /**
      * store binding values
      *  @property values :(string | number | null)[]
      */
+    protected connection: string;
+    protected placeholderFn: (count: number, column: string) => string;
     protected values: (string | number | null)[] = [];
     /**
      *
@@ -30,6 +34,8 @@ export default class Condition implements ICondition {
      */
     constructor(placeholderCounter: number, protected wherePrefix = "where") {
         this.placeholderCounter = placeholderCounter;
+        this.connection = env("DB_DRIVER");
+        this.placeholderFn = placeholders[this.connection];
     }
 
     /**
@@ -74,7 +80,9 @@ export default class Condition implements ICondition {
             if (value == null) {
                 throw new Error(`value of the condition is null or undefined`);
             }
-            this.wheres.push(`${column} ${op} $${this.placeholderCounter}`);
+            this.wheres.push(
+                `${column} ${op} ${this.placeholderFn(this.placeholderCounter, column)}`
+            );
             this.mergeValues(value);
         }
         return this;
@@ -112,7 +120,7 @@ export default class Condition implements ICondition {
             }
             const placeholder: string[] = [];
             for (let i = this.placeholderCounter; i <= values.length; i++) {
-                placeholder.push(`$${i}`);
+                placeholder.push(this.placeholderFn(i, column));
             }
             this.mergeValues(values).wheres.push(`${column} in(${placeholder.toString()})`);
         }
@@ -138,7 +146,7 @@ export default class Condition implements ICondition {
             }
             const placeholder: string[] = [];
             for (let i = this.placeholderCounter; i <= values.length; i++) {
-                placeholder.push(`$${i}`);
+                placeholder.push(this.placeholderFn(i, column));
             }
             this.mergeValues(values).wheres.push(`${column} not in(${placeholder.toString()})`);
         }
@@ -163,7 +171,7 @@ export default class Condition implements ICondition {
             if (!value) {
                 throw new Error(`value of the condeition is null or undefined`);
             }
-            this.ors.push(`${column} ${op} $${this.placeholderCounter}`);
+            this.ors.push(`${column} ${op} ${this.placeholderFn(this.placeholderCounter, column)}`);
             this.mergeValues(value);
         }
         return this;

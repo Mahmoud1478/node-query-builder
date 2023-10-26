@@ -1,5 +1,9 @@
 import DB from "../../index";
 import IQuery from "../../@Interfaces/IQuery";
+import { config } from "dotenv";
+beforeAll(function (): void {
+    config();
+});
 describe("where statements", (): void => {
     describe("basics", (): void => {
         it("simple where condition ", (): void => {
