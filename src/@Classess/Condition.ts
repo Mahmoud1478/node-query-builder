@@ -2,6 +2,7 @@ import ICondition from "../@Interfaces/ICondition";
 import IQuery from "../@Interfaces/IQuery";
 import { env } from "../helpers";
 import placeholders from "../@Placeholder";
+import compilers from "../@Compiler";
 
 export default class Condition implements ICondition {
     /**
@@ -210,12 +211,7 @@ export default class Condition implements ICondition {
      * @return {string} The raw SQL string.
      */
     toRawSql(): string {
-        const [q, v] = this.toSql();
-        let y: string = q;
-        v.forEach((item, idx) => {
-            y = y.replace(`$${idx + 1}`, item as string);
-        });
-        return y;
+        return compilers[this.connection](this);
     }
 
     /**

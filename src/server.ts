@@ -2,9 +2,11 @@ import express, { Application, Request, Response } from "express";
 import IQuery from "./@Interfaces/IQuery";
 import { env } from "./helpers";
 import DB from "./index";
+import { config } from "dotenv";
 
 const App: Application = express();
 const port: string = env("PORT", "3000");
+config();
 
 App.listen(port, (): void => {
     console.log(`\nApplication started in http://localhost:${port}`);
