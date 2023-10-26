@@ -21,11 +21,9 @@ App.get("/", function ($request: Request, response: Response) {
             .groupBy(["age"])
             .orderBy("name")
             .where("status", 1)
-            .union(
+            .whereExists(
                 DB.table("students")
-                    .select(["id", "name", "age"])
-                    .groupBy(["age"])
-                    .orderBy("name")
+                    .whereColumn("students.teacher_id", "teachers.id")
                     .where("status", 1)
             )
             .toRawSql()
