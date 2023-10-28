@@ -1,8 +1,8 @@
 import ICondition from "../@Interfaces/ICondition";
 import IQuery from "../@Interfaces/IQuery";
 import { env } from "../helpers";
-import placeholders from "../@Placeholder";
-import compilers from "../@Compiler";
+import { Driver, SQL } from "../@types";
+import drivers from "../@Drivers";
 
 export default class Condition implements ICondition {
     /**
@@ -10,8 +10,8 @@ export default class Condition implements ICondition {
      *  @property values :(string | number | null)[]
      */
     protected connection: string;
-    protected placeholderFn: (count: number, column: string) => string;
     protected values: (string | number | null)[] = [];
+    protected driver: Driver;
     /**
      *
      * @protected
@@ -36,7 +36,7 @@ export default class Condition implements ICondition {
     constructor(placeholderCounter: number, protected wherePrefix = "where") {
         this.placeholderCounter = placeholderCounter;
         this.connection = env("DB_DRIVER");
-        this.placeholderFn = placeholders[this.connection];
+        this.driver = drivers[this.connection];
     }
 
     /**
@@ -44,7 +44,7 @@ export default class Condition implements ICondition {
      *
      * @return {Condition} The newly created Condition object.
      */
-    protected newObject(): Condition {
+    protected newObject(): ICondition {
         return new Condition(this.placeholderCounter, "");
     }
 
@@ -74,7 +74,7 @@ export default class Condition implements ICondition {
         op = "="
     ): this {
         if (typeof column === "function") {
-            const x = new Condition(this.placeholderCounter, "");
+            const x = this.newObject();
             column(x);
             this.wheres.push(`(${this.mergeObject(x)})`);
         } else {
@@ -82,7 +82,7 @@ export default class Condition implements ICondition {
                 throw new Error(`value of the condition is null or undefined`);
             }
             this.wheres.push(
-                `${column} ${op} ${this.placeholderFn(this.placeholderCounter, column)}`
+                `${column} ${op} ${this.driver.placeholder(this.placeholderCounter, column)}`
             );
             this.mergeValues(value);
         }
@@ -115,16 +115,17 @@ export default class Condition implements ICondition {
             const x = this.newObject();
             values(x);
             this.wheres.push(`${column} in(${this.mergeObject(x)})`);
-        } else {
-            if (values.length == 0) {
-                throw new Error(`values of the condeition is empty`);
-            }
-            const placeholder: string[] = [];
-            for (let i = this.placeholderCounter; i <= values.length; i++) {
-                placeholder.push(this.placeholderFn(i, column));
-            }
-            this.mergeValues(values).wheres.push(`${column} in(${placeholder.toString()})`);
+            return this;
         }
+        if (values.length == 0) {
+            throw new Error(`values of the condeition is empty`);
+        }
+        const placeholder: string[] = [];
+        for (let i: number = this.placeholderCounter; i <= values.length; i++) {
+            placeholder.push(this.driver.placeholder(i, column));
+        }
+        this.mergeValues(values).wheres.push(`${column} in(${placeholder.toString()})`);
+
         return this;
     }
 
@@ -137,20 +138,26 @@ export default class Condition implements ICondition {
      * @return {this} The current instance of the class.
      */
     whereNotIn(column: string, values: (string | number)[] | CallableFunction): this {
+
+        let q: string;
         if (typeof values === "function") {
             const x = this.newObject();
             values(x);
-            this.wheres.push(`${column} not in(${this.mergeObject(x)})`);
+            q = this.mergeObject(x);
         } else {
             if (values.length == 0) {
                 throw new Error(`values of the condition is empty`);
             }
             const placeholder: string[] = [];
-            for (let i = this.placeholderCounter; i <= values.length; i++) {
-                placeholder.push(this.placeholderFn(i, column));
+            for (let i: number = this.placeholderCounter; i <= values.length; i++) {
+                placeholder.push(this.driver.placeholder(i, column));
             }
-            this.mergeValues(values).wheres.push(`${column} not in(${placeholder.toString()})`);
+            q = placeholder.toString();
+            this.mergeValues(values);
         }
+
+        this.wheres.push(`${column} not in(${q})`);
+
         return this;
     }
 
@@ -164,6 +171,7 @@ export default class Condition implements ICondition {
      * @returns {this} Returns the current instance of the class.
      */
     or(column: string | CallableFunction, value: string | number | null = null, op = "="): this {
+
         if (typeof column === "function") {
             const x = new Condition(this.placeholderCounter, "");
             column(x);
@@ -172,7 +180,9 @@ export default class Condition implements ICondition {
             if (!value) {
                 throw new Error(`value of the condeition is null or undefined`);
             }
-            this.ors.push(`${column} ${op} ${this.placeholderFn(this.placeholderCounter, column)}`);
+            this.ors.push(
+                `${column} ${op} ${this.driver.placeholder(this.placeholderCounter, column)}`
+            );
             this.mergeValues(value);
         }
         return this;
@@ -196,7 +206,7 @@ export default class Condition implements ICondition {
      *
      * @return {[string, (string | number | null)[]]} The SQL query string and the associated values.
      */
-    toSql(): [string, (string | number | null)[]] {
+    toSql(): SQL {
         return [
             `${this.wheres.length ? `${this.wherePrefix} ${this.wheres.join(" and ")}` : ""}${
                 this.ors.length ? ` or ${this.ors.join(" or ")}` : ""
@@ -211,7 +221,7 @@ export default class Condition implements ICondition {
      * @return {string} The raw SQL string.
      */
     toRawSql(): string {
-        return compilers[this.connection](this);
+        return this.driver.compile(this);
     }
 
     /**
@@ -268,14 +278,22 @@ export default class Condition implements ICondition {
      * Merges an array of values into the current values of the object.
      *
      * @param {Array<string | null | number> | string | null | number} values - The values to merge.
+     * @param reverse
      * @return {this} - The updated object instance.
      */
-    protected mergeValues(values: (string | null | number)[] | string | null | number): this {
+    protected mergeValues(
+        values: (string | null | number)[] | string | null | number,
+        reverse = false
+    ): this {
         if (!Array.isArray(values)) {
             values = [values];
         }
         this.placeholderCounter += values.length;
-        this.values = this.values.concat(values);
+        if (reverse) {
+            this.values = values.concat(this.values);
+        } else {
+            this.values = this.values.concat(values);
+        }
         return this;
     }
 }

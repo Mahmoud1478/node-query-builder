@@ -1,3 +1,5 @@
+import { SQL } from "../@types";
+
 export default interface ICondition {
     /**
      *
@@ -51,7 +53,7 @@ export default interface ICondition {
      * get sql statement with binding values
      * @return {[string , (string|number)[]] }
      */
-    toSql: () => [string, (string | number | null)[]];
+    toSql: () => SQL;
     /**
      * set the starting of placeholder
      * @param count

@@ -8,7 +8,7 @@ class DB {
      * @returns {Query} - The new Query object.
      */
     static table(table: string): Query {
-        return new Query(table);
+        return new Query(table, "select");
     }
 }
 

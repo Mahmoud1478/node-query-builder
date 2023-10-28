@@ -2,6 +2,7 @@ import Condition from "./Condition";
 import IQuery from "../@Interfaces/IQuery";
 import Join from "./Join";
 import Spell from "../@Spelling/PostgreSql";
+import { SQL } from "../@types";
 
 export default class Query extends Condition implements IQuery {
     /**
@@ -62,9 +63,11 @@ export default class Query extends Condition implements IQuery {
      *
      * @param {string} table - the name of the table
      * @param {number} placeholder - the placeholder value (optional, default value is 1)
+     * @param statement
      */
-    constructor(protected table: string, placeholder = 1) {
-        super(placeholder);
+    constructor(protected table: string, statement: string, placeholder: number = 1) {
+        super(placeholder, "");
+        this.statement = statement;
     }
 
     /**
@@ -83,8 +86,8 @@ export default class Query extends Condition implements IQuery {
      *
      * @return {Query} - A new instance of the Query class.
      */
-    protected newObject(): Query {
-        return new Query(this.table, this.placeholderCounter);
+    protected newObject(statemente = ""): Query {
+        return new Query(this.table, statemente, this.placeholderCounter);
     }
 
     /**
@@ -113,7 +116,7 @@ export default class Query extends Condition implements IQuery {
         }
         let o: IQuery;
         if (typeof query === "function") {
-            o = this.newObject();
+            o = this.newObject("select");
             query(o);
         } else {
             o = query;
@@ -133,10 +136,12 @@ export default class Query extends Condition implements IQuery {
     update(columns: Record<string, string | number>): this {
         this.columns = [];
         this.statement = "update";
-        Object.keys(columns).forEach((key) => {
-            this.columns.push(`${key} = ${this.placeholderFn(this.placeholderCounter, key)}`);
+        Object.keys(columns).forEach((key: string, idx): void => {
+            this.columns.push(
+                `${key} = ${this.driver.placeholder(this.placeholderCounter + idx, key)}`
+            );
         });
-        this.mergeValues(Object.values(columns));
+        this.mergeValues(Object.values(columns), true);
         return this;
     }
 
@@ -162,7 +167,7 @@ export default class Query extends Condition implements IQuery {
         this.columns = keys;
         const place: string[] = [];
         keys.forEach((key: string, idx: number) => {
-            place.push(this.placeholderFn(this.placeholderCounter + (idx + 1), key));
+            place.push(this.driver.placeholder(this.placeholderCounter + (idx + 1), key));
         });
         this.prams.values = this.prams.values.concat(`(${place.toString()})`);
         this.mergeValues(Object.values(columns));
@@ -175,7 +180,7 @@ export default class Query extends Condition implements IQuery {
      *  @returns - The instance of the object that called the method.
      */
     limit(value: number): this {
-        this.limit_ = this.placeholderFn(this.placeholderCounter, "limit");
+        this.limit_ = this.driver.placeholder(this.placeholderCounter, "limit");
         this.mergeValues(value);
         return this;
     }
@@ -187,7 +192,7 @@ export default class Query extends Condition implements IQuery {
      * @return {this} - Returns the current instance of the class.
      */
     offset(value: number): this {
-        this.offset_ = this.placeholderFn(this.placeholderCounter, "offset");
+        this.offset_ = this.driver.placeholder(this.placeholderCounter, "offset");
         this.mergeValues(value);
         return this;
     }
@@ -379,7 +384,7 @@ export default class Query extends Condition implements IQuery {
         }
         let q: IQuery;
         if (typeof query === "function") {
-            q = this.newObject();
+            q = this.newObject("select");
             query(q);
         } else {
             q = query;
@@ -393,19 +398,24 @@ export default class Query extends Condition implements IQuery {
      *
      * @return {[string, (string | number | null)[]]} The SQL query string and the corresponding parameter values.
      */
-    toSql(): [string, (string | number | null)[]] {
+    toSql(): SQL {
+        if (!this.statement) {
+            return super.toSql();
+        }
         return [
-            `${Spell[this.statement](this.table, this.columns.toString(), this.prams)}${
-                this.joins.length ? ` ${this.joins.join(" ")}` : ""
-            }${this.wheres.length ? ` where ${this.wheres.join(" and ")}` : ""}${
-                this.ors.length ? ` or ${this.ors.join(" or ")}` : ""
-            }${this.group_by ? ` group by ${this.group_by}` : ""} ${
-                this.order_by.length ? ` order by ${this.order_by.join(" ")}` : ""
-            }${this.limit_ ? ` limit ${this.limit_}` : ""} ${
-                this.offset_ ? ` offset ${this.offset_}` : ""
-            }${this.return ? ` returning ${this.return}` : ""}${
-                this.union_ ? `union ${this.union_}` : ""
-            }`.trimEnd(),
+            `${
+                this.statement
+                    ? Spell[this.statement](this.table, this.columns.toString(), this.prams)
+                    : ""
+            }${this.joins.length ? ` ${this.joins.join(" ")}` : ""}${
+                this.wheres.length ? ` where ${this.wheres.join(" and ")}` : ""
+            }${this.ors.length ? ` or ${this.ors.join(" or ")}` : ""}${
+                this.group_by ? ` group by ${this.group_by}` : ""
+            } ${this.order_by.length ? ` order by ${this.order_by.join(" ")}` : ""}${
+                this.limit_ ? ` limit ${this.limit_}` : ""
+            } ${this.offset_ ? ` offset ${this.offset_}` : ""}${
+                this.return ? ` returning ${this.return}` : ""
+            }${this.union_ ? `union ${this.union_}` : ""}`.trimEnd(),
             this.values,
         ];
     }
